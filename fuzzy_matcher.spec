@@ -15,7 +15,8 @@ import os
 import sys
 from pathlib import Path
 
-ROOT = Path.cwd()
+ROOT = Path(__file__).resolve().parent
+RESOURCES_DIR = ROOT / "resources"
 
 # Platform-specific icon
 if sys.platform == "win32":
@@ -34,9 +35,9 @@ a = Analysis(
     pathex=[str(ROOT)],
     binaries=[],
     datas=[
-        # Bundle the resources folder
-        (str(ROOT / "resources"), "resources"),
-    ],
+        # Bundle the resources folder only when present (e.g. local dev build).
+        (str(RESOURCES_DIR), "resources"),
+    ] if RESOURCES_DIR.exists() else [],
     hiddenimports=[
         # openpyxl internal modules PyInstaller misses
         "openpyxl",
