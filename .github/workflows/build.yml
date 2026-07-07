@@ -1,0 +1,164 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:   # allow manual trigger from the Actions tab
+
+# Only one release job runs at a time; cancel superseded runs on the same branch
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────
+  # macOS  →  FuzzyMatcher.dmg  (arm64, Apple Silicon + Rosetta on Intel)
+  # ─────────────────────────────────────────────────────────────────────────
+  build-macos:
+    runs-on: macos-14          # arm64 runner (Apple Silicon)
+    defaults:
+      run:
+        working-directory: fuzzy_matcher
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install \
+            "PySide6>=6.7" \
+            "openpyxl>=3.1" \
+            "pandas>=2.2" \
+            "rapidfuzz>=3.9" \
+            "PyInstaller>=6.6"
+
+      - name: Run tests
+        run: python -m pytest tests/ -q
+
+      - name: Build .app with PyInstaller
+        run: pyinstaller fuzzy_matcher.spec --noconfirm
+
+      - name: Package into .dmg
+        run: |
+          hdiutil create \
+            -volname "Fuzzy Account Matcher" \
+            -srcfolder dist/FuzzyMatcher.app \
+            -ov -format UDZO \
+            dist/FuzzyMatcher-macOS.dmg
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FuzzyMatcher-macOS
+          path: fuzzy_matcher/dist/FuzzyMatcher-macOS.dmg
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Windows  →  FuzzyMatcher-Windows.zip
+  # ─────────────────────────────────────────────────────────────────────────
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: fuzzy_matcher
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install `
+            "PySide6>=6.7" `
+            "openpyxl>=3.1" `
+            "pandas>=2.2" `
+            "rapidfuzz>=3.9" `
+            "PyInstaller>=6.6"
+
+      - name: Run tests
+        run: python -m pytest tests/ -q
+
+      - name: Build .exe with PyInstaller
+        run: pyinstaller fuzzy_matcher.spec --noconfirm
+
+      - name: Package into .zip
+        shell: pwsh
+        run: |
+          Compress-Archive `
+            -Path dist\FuzzyMatcher\* `
+            -DestinationPath dist\FuzzyMatcher-Windows.zip
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FuzzyMatcher-Windows
+          path: fuzzy_matcher/dist/FuzzyMatcher-Windows.zip
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Release  →  create/update the "latest" GitHub Release with both files
+  # ─────────────────────────────────────────────────────────────────────────
+  release:
+    needs: [build-macos, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # required to create/update releases and upload assets
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: FuzzyMatcher-macOS
+          path: artifacts/
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: FuzzyMatcher-Windows
+          path: artifacts/
+
+      - name: List artifacts
+        run: ls -lh artifacts/
+
+      - name: Delete existing "latest" release (if any)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete latest --yes 2>/dev/null || true
+          git push origin :refs/tags/latest 2>/dev/null || true
+
+      - name: Create "latest" release and upload assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create latest \
+            --title "Fuzzy Account Matcher — latest build" \
+            --notes "$(cat << 'EOF'
+          ## Download
+
+          | Platform | File | Install |
+          |---|---|---|
+          | **macOS** (Apple Silicon + Intel via Rosetta) | \`FuzzyMatcher-macOS.dmg\` | Open DMG → drag app to Applications → right-click → Open on first launch |
+          | **Windows** | \`FuzzyMatcher-Windows.zip\` | Extract ZIP → run \`FuzzyMatcher.exe\` |
+
+          > Built automatically from commit ${{ github.sha }} on \`master\`.
+          EOF
+          )" \
+            --prerelease \
+            artifacts/FuzzyMatcher-macOS.dmg \
+            artifacts/FuzzyMatcher-Windows.zip
