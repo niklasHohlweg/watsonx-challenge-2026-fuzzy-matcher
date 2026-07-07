@@ -15,7 +15,7 @@ import os
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd().resolve()
 RESOURCES_DIR = ROOT / "resources"
 
 # Platform-specific icon
