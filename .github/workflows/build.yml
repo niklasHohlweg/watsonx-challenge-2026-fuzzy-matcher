@@ -2,7 +2,7 @@ name: Build & Release
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   workflow_dispatch:   # allow manual trigger from the Actions tab
 
 # Only one release job runs at a time; cancel superseded runs on the same branch
