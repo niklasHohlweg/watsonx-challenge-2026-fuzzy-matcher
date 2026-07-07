@@ -11,10 +11,11 @@ Output (one-folder bundle):
     Windows: dist/FuzzyMatcher/FuzzyMatcher.exe
 """
 
+import os
 import sys
 from pathlib import Path
 
-ROOT = Path(SPECPATH)
+ROOT = Path.cwd()
 
 # Platform-specific icon
 if sys.platform == "win32":
@@ -23,7 +24,6 @@ else:
     APP_ICON = str(ROOT / "resources" / "icons" / "app.icns")
 
 # Use a fallback empty string if icon file hasn't been created yet
-import os
 if not os.path.exists(APP_ICON):
     APP_ICON = None
 
