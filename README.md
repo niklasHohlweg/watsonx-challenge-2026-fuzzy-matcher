@@ -1,148 +1,71 @@
 # Fuzzy Account Matcher
 
-A cross-platform desktop application for fuzzy-matching company and account names between two Excel files.
+Fuzzy Account Matcher helps business teams quickly align customer, account, and company names across two Excel files, even when names are written differently.
 
-## Features
+## Why It Matters
 
-- Load two Excel files; pick any column from each for comparison
-- Weighted fuzzy algorithm: Jaccard token similarity (40%) + character ratio (35%) + partial ratio (25%)
-- Quality tiers: Exact / Good / Possible / No Match — colour-coded in the output
-- Choose extra columns from each file to include in the export
-- Multi-sheet Excel output: Summary, Matched, Unmatched
-- Runs entirely in-process — no internet connection required
+When systems store names in different formats, matching records manually can take hours and still lead to mistakes. This tool automates the comparison so teams can:
 
-## Requirements
+- reduce manual reconciliation effort
+- improve reporting quality
+- identify duplicates and overlaps faster
+- prepare cleaner data for migration, CRM updates, and analytics
 
-- Python 3.11 or newer
-- pip
+## Who It Is For
 
-## Local Development Setup
+- Sales operations teams
+- Finance and controlling teams
+- Data and reporting teams
+- CRM and ERP migration project teams
 
-```bash
-# 1. Clone / unzip the project
-cd fuzzy_matcher
+## What You Can Do
 
-# 2. Create a virtual environment
-python -m venv .venv
-source .venv/bin/activate      # macOS / Linux
-.venv\Scripts\activate         # Windows PowerShell
+- compare two Excel lists of accounts or companies
+- choose which columns should be matched
+- include additional business columns in the result
+- receive color-coded match confidence levels
+- export a clear output workbook with summary and detail tabs
 
-# 3. Install runtime + dev dependencies
-pip install -e ".[dev]"
-# or, using requirements file:
-pip install PySide6>=6.7 openpyxl>=3.1 pandas>=2.2 rapidfuzz>=3.9
+## How It Works
 
-# 4. Run the application
-python main.py
+1. Upload two Excel files.
+2. Select the columns that contain account or company names.
+3. Run matching and export the result.
 
-# 5. Run tests
-pip install pytest
-pytest tests/ -v
-```
+The output groups records into:
 
-## Building a Standalone Executable
+- Exact matches
+- Good matches
+- Possible matches
+- No matches
 
-### Prerequisites
+## Business Outcomes
 
-```bash
-pip install "PyInstaller>=6.6"
-```
+- faster account harmonization across systems
+- improved confidence in customer master data
+- less time spent on repetitive Excel cleanup
+- better readiness for audits, migration, and decision-making
 
-### macOS (produces `dist/FuzzyMatcher.app`)
+## Data Privacy
 
-```bash
-cd fuzzy_matcher
-pyinstaller fuzzy_matcher.spec
-```
+- processing runs locally on your computer
+- no internet connection is required for matching
+- your source files stay under your control
 
-To distribute, wrap in a DMG:
-```bash
-hdiutil create -volname "FuzzyMatcher" -srcfolder dist/FuzzyMatcher.app \
-    -ov -format UDZO dist/FuzzyMatcher.dmg
-```
+## Typical Use Cases
 
-**Code-signing (required to suppress Gatekeeper warnings):**
-```bash
-# Sign the app bundle with your Apple Developer ID
-codesign --deep --force --options=runtime \
-    --sign "Developer ID Application: Your Name (TEAMID)" \
-    dist/FuzzyMatcher.app
+- consolidating account lists after mergers or acquisitions
+- reconciling CRM and ERP customer data
+- preparing standardized master data for BI dashboards
+- cleaning partner and supplier lists before import
 
-# Notarize (requires an App Store Connect API key)
-xcrun notarytool submit dist/FuzzyMatcher.dmg \
-    --apple-id you@example.com \
-    --team-id TEAMID \
-    --password @keychain:AC_PASSWORD \
-    --wait
+## Getting Started
 
-xcrun stapler staple dist/FuzzyMatcher.dmg
-```
+Use the latest release package for your platform and run the application.
 
-### Windows (produces `dist/FuzzyMatcher/FuzzyMatcher.exe`)
+- macOS: open the DMG and move the app to Applications
+- Windows: extract the ZIP and run the executable
 
-```cmd
-cd fuzzy_matcher
-pyinstaller fuzzy_matcher.spec
-```
+## Support
 
-To distribute: zip the `dist/FuzzyMatcher` folder and share.
-
-**Suppressing SmartScreen warnings** requires an EV (Extended Validation) code-signing certificate:
-```cmd
-signtool sign /tr http://timestamp.digicert.com /td sha256 /fd sha256 \
-    /a dist\FuzzyMatcher\FuzzyMatcher.exe
-```
-
-## Known PyInstaller Pitfalls
-
-| Issue | Fix |
-|---|---|
-| `pandas` trying to import `pyarrow` | Already excluded in `fuzzy_matcher.spec` via `excludes=["pyarrow"]` |
-| PySide6 platform plugin not found | PyInstaller's PySide6 hook handles this automatically in version ≥ 6.x |
-| openpyxl template files missing | The `hiddenimports` list in the spec includes `openpyxl.cell._writer` |
-| macOS: app crashes on first launch | Ensure `argv_emulation=False` (already set) and test on a clean machine |
-
-## Algorithm Details
-
-| Signal | Weight | Purpose |
-|---|---|---|
-| Jaccard on normalized token sets | 40% | Handles word-order variance |
-| rapidfuzz `ratio` | 35% | Character-level similarity / typo tolerance |
-| rapidfuzz `partial_ratio` | 25% | Substring / abbreviation matching |
-
-**Quality tiers:**
-
-| Tier | Threshold |
-|---|---|
-| Exact | ≥ 0.97 |
-| Good | ≥ 0.80 |
-| Possible | ≥ 0.60 |
-| No Match | < 0.60 |
-
-**Normalization steps:** whitespace collapse → lowercase → punctuation removal → legal-entity suffix removal (GmbH, AG, Inc, Ltd, LLC, …) → stopword removal (the, and, of, …)
-
-## Project Structure
-
-```
-fuzzy_matcher/
-├── main.py              Entry point
-├── ui/
-│   ├── main_window.py   MainWindow + AppState wizard shell
-│   ├── step1_input.py   File pickers + column dropdowns
-│   ├── step2_matching.py Run button, progress bar, preview
-│   └── step3_output.py  Column checkboxes + export
-├── core/
-│   ├── excel_reader.py  Excel → DataFrame loader
-│   ├── normalizer.py    Text normalization pipeline
-│   ├── scorer.py        Weighted similarity scoring
-│   ├── matcher.py       Row-by-row matching orchestrator
-│   └── exporter.py      Multi-sheet Excel output builder
-├── models/
-│   └── match_result.py  MatchResult dataclass
-├── workers/
-│   └── match_worker.py  QThread worker for background matching
-├── tests/               pytest test suite
-├── resources/icons/     App icons (.ico / .icns)
-├── fuzzy_matcher.spec   PyInstaller build spec
-└── pyproject.toml       Project metadata + dependencies
-```
+If you want to adapt match thresholds, output format, or workflow steps for your business process, open an issue in this repository.
