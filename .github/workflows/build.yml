@@ -34,7 +34,7 @@ jobs:
         run: python -m pytest tests/ -q
 
       - name: Build .app with PyInstaller
-        run: pyinstaller fuzzy_matcher.spec --noconfirm
+        run: pyinstaller fuzzy_matcher/fuzzy_matcher.spec --noconfirm
 
       - name: Package into .dmg
         run: |
@@ -42,13 +42,13 @@ jobs:
             -volname "Fuzzy Account Matcher" \
             -srcfolder dist/FuzzyMatcher.app \
             -ov -format UDZO \
-            dist/FuzzyMatcher-macOS.dmg
+            fuzzy_matcher/dist/FuzzyMatcher-macOS.dmg
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: FuzzyMatcher-macOS
-          path: dist/FuzzyMatcher-macOS.dmg
+          path: fuzzy_matcher/dist/FuzzyMatcher-macOS.dmg
           retention-days: 7
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -74,20 +74,20 @@ jobs:
         run: python -m pytest tests/ -q
 
       - name: Build .exe with PyInstaller
-        run: pyinstaller fuzzy_matcher.spec --noconfirm
+        run: pyinstaller fuzzy_matcher/fuzzy_matcher.spec --noconfirm
 
       - name: Package into .zip
         shell: pwsh
         run: |
           Compress-Archive `
             -Path dist\FuzzyMatcher\* `
-            -DestinationPath dist\FuzzyMatcher-Windows.zip
+            -DestinationPath fuzzy_matcher\dist\FuzzyMatcher-Windows.zip
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: FuzzyMatcher-Windows
-          path: dist/FuzzyMatcher-Windows.zip
+          path: fuzzy_matcher/dist/FuzzyMatcher-Windows.zip
           retention-days: 7
 
   # ─────────────────────────────────────────────────────────────────────────
